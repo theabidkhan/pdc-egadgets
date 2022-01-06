@@ -1,0 +1,66 @@
+[
+  {
+      "name": "collectioneGadgets",
+      "policy": {
+          "identities": [
+              {
+                  "role": {
+                      "name": "member",
+                      "mspId": "manufacturerMSP"
+                  }
+              },
+              {
+                  "role": {
+                      "name": "member",
+                      "mspId": "sellerMSP"
+                  }
+              }
+          ],
+          "policy": {
+              "1-of": [
+                  {
+                      "signed-by": 0
+                  },
+                  {
+                      "signed-by": 1
+                  }
+              ]
+          }
+      },
+      "requiredPeerCount": 1,
+      "maxPeerCount": 4,
+      "blockToLive": 100
+  },
+  {
+      "name": "collectioneGadgetsPrivateDetails",
+      "policy": {
+          "identities": [
+              {
+                  "role": {
+                      "name": "member",
+                      "mspId": "manufacturerMSP"
+                  }
+              },
+              {
+                "role": {
+                    "name": "member",
+                    "mspId": "manufacturerMSP"
+                }
+            }
+          ],
+          "policy": {
+              "1-of": [
+                  {
+                      "signed-by": 0
+                  },
+                  {
+                    "signed-by": 0
+                }
+              ]
+          }
+      },
+      "requiredPeerCount": 1,
+      "maxPeerCount": 4,
+      "blockToLive": 100
+  }
+]

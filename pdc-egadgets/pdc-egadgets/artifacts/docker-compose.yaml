@@ -1,0 +1,144 @@
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+version: '2'
+
+services:
+
+  ca.manufacturer.egadgets.com:
+    image: hyperledger/fabric-ca
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server-config
+      - FABRIC_CA_SERVER_CA_NAME=ca-manufacturer
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.manufacturer.egadgets.com-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/ed9c2eb4336ed740d13c2cdb563d20542f2293f5afac1273f9096ec894848dd4_sk
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.manufacturer.egadgets.com-cert.pem
+      - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server-config/ed9c2eb4336ed740d13c2cdb563d20542f2293f5afac1273f9096ec894848dd4_sk
+    ports:
+      - "7054:7054"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ./channel/crypto-config/peerOrganizations/manufacturer.egadgets.com/ca/:/etc/hyperledger/fabric-ca-server-config
+      - ../ca-server-config/fabric-ca-server-config.yaml:/etc/hyperledger/fabric-ca-server-config/fabric-ca-server-config.yaml
+    container_name: ca_peermanufacturer
+
+  ca.seller.egadgets.com:
+    image: hyperledger/fabric-ca
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server-config
+      - FABRIC_CA_SERVER_CA_NAME=ca-seller
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.seller.egadgets.com-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/96c9a8fb85571d806ce97055c0172db3dcfefd78016dd3b94f1c317c3f1f5a8c_sk
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.seller.egadgets.com-cert.pem
+      - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server-config/96c9a8fb85571d806ce97055c0172db3dcfefd78016dd3b94f1c317c3f1f5a8c_sk
+    ports:
+      - "8054:7054"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ./channel/crypto-config/peerOrganizations/seller.egadgets.com/ca/:/etc/hyperledger/fabric-ca-server-config
+      - ../ca-server-config/fabric-ca-server-config.yaml:/etc/hyperledger/fabric-ca-server-config/fabric-ca-server-config.yaml
+    container_name: ca_peerseller
+
+  orderer.egadgets.com:
+    container_name: orderer.egadgets.com
+    image: hyperledger/fabric-orderer
+    environment:
+      - FABRIC_LOGGING_SPEC=debug
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_GENESISMETHOD=file
+      - ORDERER_GENERAL_GENESISFILE=/etc/hyperledger/configtx/genesis.block
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/etc/hyperledger/crypto/orderer/msp
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/etc/hyperledger/crypto/orderer/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/etc/hyperledger/crypto/orderer/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/etc/hyperledger/crypto/orderer/tls/ca.crt, /etc/hyperledger/crypto/peermanufacturer/tls/ca.crt, /etc/hyperledger/crypto/peerseller/tls/ca.crt]
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderers
+    command: orderer
+    ports:
+      - 7050:7050
+    volumes:
+        - ./channel:/etc/hyperledger/configtx
+        - ./channel/crypto-config/ordererOrganizations/egadgets.com/orderers/orderer.egadgets.com/:/etc/hyperledger/crypto/orderer
+        - ./channel/crypto-config/peerOrganizations/manufacturer.egadgets.com/peers/peer0.manufacturer.egadgets.com/:/etc/hyperledger/crypto/peermanufacturer
+        - ./channel/crypto-config/peerOrganizations/seller.egadgets.com/peers/peer0.seller.egadgets.com/:/etc/hyperledger/crypto/peerseller
+
+  peer0.manufacturer.egadgets.com:
+    container_name: peer0.manufacturer.egadgets.com
+    extends:
+      file:   base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer0.manufacturer.egadgets.com
+      - CORE_PEER_LOCALMSPID=manufacturerMSP
+      - CORE_PEER_ADDRESS=peer0.manufacturer.egadgets.com:7051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer1.manufacturer.egadgets.com:7051      
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.manufacturer.egadgets.com:7051
+    ports:
+      - 7051:7051
+      - 7053:7053
+    volumes:
+        - ./channel/crypto-config/peerOrganizations/manufacturer.egadgets.com/peers/peer0.manufacturer.egadgets.com/:/etc/hyperledger/crypto/peer
+    depends_on:
+      - orderer.egadgets.com
+
+  peer1.manufacturer.egadgets.com:
+    container_name: peer1.manufacturer.egadgets.com
+    extends:
+      file:   base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer1.manufacturer.egadgets.com
+      - CORE_PEER_LOCALMSPID=manufacturerMSP
+      - CORE_PEER_ADDRESS=peer1.manufacturer.egadgets.com:7051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.manufacturer.egadgets.com:7051      
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.manufacturer.egadgets.com:7051
+    ports:
+      - 7056:7051
+      - 7058:7053
+    volumes:
+        - ./channel/crypto-config/peerOrganizations/manufacturer.egadgets.com/peers/peer1.manufacturer.egadgets.com/:/etc/hyperledger/crypto/peer
+    depends_on:
+      - orderer.egadgets.com
+
+  peer0.seller.egadgets.com:
+    container_name: peer0.seller.egadgets.com
+    extends:
+      file:   base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer0.seller.egadgets.com
+      - CORE_PEER_LOCALMSPID=sellerMSP
+      - CORE_PEER_ADDRESS=peer0.seller.egadgets.com:7051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer1.seller.egadgets.com:7051      
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.seller.egadgets.com:7051
+    ports:
+      - 8051:7051
+      - 8053:7053
+    volumes:
+        - ./channel/crypto-config/peerOrganizations/seller.egadgets.com/peers/peer0.seller.egadgets.com/:/etc/hyperledger/crypto/peer
+    depends_on:
+      - orderer.egadgets.com
+
+  peer1.seller.egadgets.com:
+    container_name: peer1.seller.egadgets.com
+    extends:
+      file:   base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer1.seller.egadgets.com
+      - CORE_PEER_LOCALMSPID=sellerMSP
+      - CORE_PEER_ADDRESS=peer1.seller.egadgets.com:7051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.seller.egadgets.com:7051      
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.seller.egadgets.com:7051
+    ports:
+      - 8056:7051
+      - 8058:7053
+    volumes:
+        - ./channel/crypto-config/peerOrganizations/seller.egadgets.com/peers/peer1.seller.egadgets.com/:/etc/hyperledger/crypto/peer
+    depends_on:
+      - orderer.egadgets.com
